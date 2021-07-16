@@ -1,8 +1,49 @@
 import numpy as np
 import pandas as pds
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from . import deprecation
+
+
+def _epoch_repr(epoch):
+    return str(datetime.fromtimestamp(epoch, tz=timezone.utc))
+
+
+def _html_tag(tag, txt):
+    return f'<{tag}>{txt}</{tag}>'
+
+
+def _html_table(head, index, data):
+    length = len(index)
+    width = data.shape[1] + 1
+    return f'''
+<table>
+    {_html_tag('tr', ' '.join(list(map(lambda el: _html_tag('th', el), head))))}
+    {
+    ''.join([
+        _html_tag('tr',
+                  ''.join(
+                      [_html_tag('td', _epoch_repr(index[i]))] +
+                      list(map(lambda el: _html_tag('td', el), data[i]))
+                  )
+                  )
+        for i in range(min(length, 5))
+    ])
+    }
+    {_html_tag('tr', _html_tag('td', ' ... ') * width) if length > 10 else ''}
+    {
+    ''.join([
+        _html_tag('tr',
+                  ''.join(
+                      [_html_tag('td', _epoch_repr(index[length - i - 1]))] +
+                      list(map(lambda el: _html_tag('td', el), data[length - i - 1]))
+                  )
+                  )
+        for i in reversed(range(min(min(length - 5, 5), 5)))
+    ])
+    }
+</table>
+'''
 
 
 class SpwcVariable(object):
@@ -59,6 +100,10 @@ class SpwcVariable(object):
         return self.to_dataframe(datetime_index=True).plot(*args, **kwargs)
 
     @property
+    def empty(self):
+        return len(self) == 0
+
+    @property
     def data(self):
         deprecation('data will be removed soon')
         return self.values
@@ -67,6 +112,16 @@ class SpwcVariable(object):
     def data(self, values):
         deprecation('data will be removed soon')
         self.values = values
+
+    def _repr_html_(self):
+        return _html_table(['Time'] + self.columns, self.time, self.values)
+
+    def __repr__(self):
+        if self.empty:
+            return '''Empty SpwcVariable'''
+        else:
+            return f'''SpwcVariable {_epoch_repr(self.time[0])}:{_epoch_repr(self.time[-1])}
+        '''
 
     @staticmethod
     def from_dataframe(df: pds.DataFrame) -> 'SpwcVariable':
