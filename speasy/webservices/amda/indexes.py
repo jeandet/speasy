@@ -74,7 +74,6 @@ class AMDAParameterIndex(AMDAIndex, ParameterIndex):  # lgtm [py/conflicting-att
 
 
 class AMDADatasetIndex(AMDAIndex, DatasetIndex):  # lgtm [py/conflicting-attributes]
-    parameters: SimpleNamespace
 
     def __init__(self, meta: Dict, is_public=True):
         xmlid = meta.pop('xmlid')
