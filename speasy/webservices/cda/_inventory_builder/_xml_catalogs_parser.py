@@ -1,6 +1,7 @@
 from types import SimpleNamespace
-from .indexes import CDAComponentIndex, CDADatasetIndex, CDAParameterIndex, CDAPathIndex
-from ...core import fix_name
+from speasy.webservices.cda.indexes import CDAComponentIndex, CDADatasetIndex, CDAParameterIndex, CDAPathIndex
+from ._cdf_masters_parser import load_master_cdf
+from speasy.core import fix_name
 import xml.etree.ElementTree as Et
 
 
@@ -8,7 +9,11 @@ def alias_rules(name):
     rules = {
         "AC": "ACE",
         "Parker Solar Probe (PSP)": "ParkerSolarProbe",
-        "PSP": "ParkerSolarProbe"
+        "PSP": "ParkerSolarProbe",
+        "mms1": "MMS1",
+        "mms2": "MMS2",
+        "mms3": "MMS3",
+        "mms4": "MMS4",
     }
     return rules.get(name, name)
 
@@ -64,6 +69,8 @@ def parse_dataset(inventory_tree, dataset_node):
     instrument_node = dataset_node.find('{cdas}instrument')
     if has_master_cdf(dataset_node):
         return register_dataset(inventory_tree, mission_group_node, observatory_node, instrument_node, dataset_node)
+    else:
+        print(f'Missing master CDF for {dataset_node.attrib["serviceprovider_ID"]}')
 
 
 def load_xml_catalog(xml_file_path: str):
@@ -75,3 +82,4 @@ def load_xml_catalog(xml_file_path: str):
                 for node in site.iter('{cdas}dataset'):
                     parse_dataset(inventory_tree, node)
                 return inventory_tree
+
