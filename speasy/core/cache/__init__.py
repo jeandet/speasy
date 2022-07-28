@@ -1,7 +1,7 @@
 from speasy import SpeasyVariable
 from .cache import Cache, CacheItem
 from speasy.config import cache_path
-from typing import Union, Callable
+from typing import Union, Callable, List
 from speasy.core.datetime_range import DateTimeRange
 from .. import make_utc_datetime
 from speasy.products.variable import merge as merge_variables
@@ -125,6 +125,13 @@ class Cacheable(object):
             log.debug(f"{key} not found inside cache")
         return None
 
+    def get_fragments_from_cache(self, fragments: List[str], product: str, version, **kwargs):
+        data_fragments = []
+        with self.cache.transact():
+            for fragment in fragments:
+                data_fragments.append(self.get_from_cache(fragment, product, version, **kwargs))
+        return data_fragments
+
     def __call__(self, get_data):
         @wraps(get_data)
         def wrapped(wrapped_self, product, start_time, stop_time, **kwargs):
@@ -143,8 +150,9 @@ class Cacheable(object):
                 tend += timedelta(hours=fragment_hours)
             result = None
             contiguous_fragments = []
-            for fragment in fragments:
-                data = self.get_from_cache(fragment=fragment, product=product, version=version, **kwargs)
+            fragments_from_cache = self.get_fragments_from_cache(fragments=fragments, product=product, version=version,
+                                                                 **kwargs)
+            for data, fragment in zip(fragments_from_cache, fragments):
                 if data is None:
                     contiguous_fragments.append(fragment)
                 else:
