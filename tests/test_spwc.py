@@ -4,18 +4,21 @@
 """Tests for `speasy` package."""
 import unittest
 from datetime import datetime, timezone
-import speasy as spz
+
 from ddt import ddt, data
+
+import speasy as spz
 
 
 @ddt
 class GetSpwc(unittest.TestCase):
     def setUp(self):
+        self.proxy_state = spz.config.proxy_enabled.get()
         spz.config.proxy_enabled.set("true")
         spz.config.proxy_url.set("http://sciqlop.lpp.polytechnique.fr/cache")
 
     def tearDown(self):
-        pass
+        spz.config.proxy_enabled.set(self.proxy_state)
 
     @data(
         {
@@ -67,7 +70,7 @@ class GetSpwc(unittest.TestCase):
             "disable_proxy": True
         },
         {
-            "product": spz.inventory.data_tree.amda.Catalogs.SharedCatalogs.MARS.choc_MPB_catalogue_MEX
+            "product": spz.inventory.data_tree.amda.Catalogs.SharedCatalogs.MARS.MEXShockCrossings
         },
         {
             "product": spz.inventory.data_tree.amda.TimeTables.SharedTimeTables.EARTH.Event_list_tail_hall_reconnection_SC1

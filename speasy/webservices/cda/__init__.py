@@ -63,6 +63,7 @@ class CDA_Webservice:
         return self._dl_variable(start_time=start_time, stop_time=stop_time, dataset=dataset,
                                  variable=variable)
 
-    def get_variable(self, dataset: str, variable: str, start_time: datetime or str, stop_time: datetime or str) -> \
+    def get_variable(self, dataset: str, variable: str, start_time: datetime or str, stop_time: datetime or str,
+                     **kwargs) -> \
         Optional[SpeasyVariable]:
-        return self.get_data(f"{dataset}/{variable}", start_time, stop_time)
+        return self.get_data(f"{dataset}/{variable}", start_time, stop_time, **kwargs)
