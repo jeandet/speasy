@@ -95,11 +95,15 @@ class SpeasyVariable(object):
             if isinstance(key.start, float) or isinstance(key.stop, float):
                 start = self.time[0] - 1 if key.start is None else np.datetime64(int(key.start * 1e9), 'ns')
                 stop = self.time[-1] + 1 if key.stop is None else np.datetime64(int(key.stop * 1e9), 'ns')
-                return self.view(np.logical_and(self.time >= start, self.time < stop))
+                start = np.searchsorted(self.time, start, side='left')
+                stop = np.searchsorted(self.time, stop, side='left')
+                return self.view(slice(start, stop))
             if isinstance(key.start, datetime):
                 start = self.time[0] - 1 if key.start is None else np.datetime64(key.start, 'ns')
                 stop = self.time[-1] + 1 if key.stop is None else np.datetime64(key.stop, 'ns')
-                return self.view(np.logical_and(self.time >= start, self.time < stop))
+                start = np.searchsorted(self.time, start, side='left')
+                stop = np.searchsorted(self.time, stop, side='left')
+                return self.view(slice(start, stop))
 
     def to_dataframe(self) -> pds.DataFrame:
         """Convert the variable to a pandas.DataFrame object.
