@@ -17,7 +17,7 @@ class CacheItem:
 class Cache:
     __slots__ = ['cache_file', '_data', '_hit', '_miss', 'cache_type']
 
-    def __init__(self, cache_path: str = "", cache_type='Fanout'):
+    def __init__(self, cache_path: str = "", cache_type='Cache'):
         if cache_type == 'Fanout':
             self._data = dc.FanoutCache(cache_path, shards=8, size_limit=int(float(cache_size.get())))
         elif cache_type == 'Cache':

@@ -51,20 +51,20 @@ class SpeasyVariable(object):
         self.time = time
         self.y = y
 
-    def view(self, time_range):
+    def view(self, index_range: slice):
         """Return view of the current variable within the desired :data:`time_range`.
 
         Parameters
         ----------
-        time_range: speasy.common.datetime_range.DateTimeRange
-            time range
+        index_range: slice
+            index range
 
         Returns
         -------
         speasy.common.variable.SpeasyVariable
             view of the variable on the given range
         """
-        return SpeasyVariable(self.time[time_range], self.values[time_range], self.meta, self.columns, self.y)
+        return SpeasyVariable(self.time[index_range], self.values[index_range], self.meta, self.columns, self.y)
 
     def __eq__(self, other: 'SpeasyVariable') -> bool:
         """Check if this variable equals another.

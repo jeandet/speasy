@@ -148,7 +148,7 @@ class Cacheable(object):
             while tend < cache_dt_range.stop_time:
                 fragments.append(tend)
                 tend += timedelta(hours=fragment_hours)
-            result = None
+            result = []
             contiguous_fragments = []
             fragments_from_cache = self.get_fragments_from_cache(fragments=fragments, product=product, version=version,
                                                                  **kwargs)
@@ -156,19 +156,22 @@ class Cacheable(object):
                 if data is None:
                     contiguous_fragments.append(fragment)
                 else:
+                    result.append(data)
                     if len(contiguous_fragments):
-                        result = get_data(wrapped_self, product=product, start_time=fragments[0],
-                                          stop_time=fragments[-1] + timedelta(hours=fragment_hours), **kwargs)
-                        self.add_to_cache(variable=result, fragments=contiguous_fragments, product=product,
+                        data = get_data(wrapped_self, product=product, start_time=contiguous_fragments[0],
+                                        stop_time=contiguous_fragments[-1] + timedelta(hours=fragment_hours), **kwargs)
+                        self.add_to_cache(variable=data, fragments=contiguous_fragments, product=product,
                                           fragment_duration_hours=fragment_hours, version=version, **kwargs)
                         contiguous_fragments = []
-                    result = merge_variables([result, data])
+                        result.append(data)
+
             if len(contiguous_fragments):
-                result = get_data(wrapped_self, product=product, start_time=fragments[0],
-                                  stop_time=fragments[-1] + timedelta(hours=fragment_hours), **kwargs)
-                self.add_to_cache(result, contiguous_fragments, product, fragment_hours, version, **kwargs)
-            if result is not None:
-                return result[dt_range.start_time:dt_range.stop_time]
+                data = get_data(wrapped_self, product=product, start_time=contiguous_fragments[0],
+                                stop_time=contiguous_fragments[-1] + timedelta(hours=fragment_hours), **kwargs)
+                self.add_to_cache(data, contiguous_fragments, product, fragment_hours, version, **kwargs)
+                result.append(data)
+            if len(result):
+                return merge_variables(result)[dt_range.start_time:dt_range.stop_time]
             return None
 
         if self.leak_cache:
