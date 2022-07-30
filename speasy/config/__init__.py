@@ -16,7 +16,6 @@ _config = configparser.ConfigParser()
 _config.read(_CONFIG_FNAME)
 
 
-
 def _save_changes():
     with open(_CONFIG_FNAME, 'w') as f:
         _config.write(f)
@@ -105,6 +104,9 @@ proxy_url = ConfigEntry("PROXY", "url", "")
 
 cache_size = ConfigEntry("CACHE", "size", "20e9")
 cache_path = ConfigEntry("CACHE", "path", str(appdirs.user_cache_dir("speasy", "LPP")))
+
+index_path = ConfigEntry("INDEX", "path", f'{appdirs.user_data_dir("speasy", "LPP")}/index')
+cdaweb_inventory_data_path = ConfigEntry("INDEX", "path", f'{appdirs.user_data_dir("speasy", "LPP")}/cda_inventory')
 
 amda_username = ConfigEntry("AMDA", "username")
 amda_password = ConfigEntry("AMDA", "password")
