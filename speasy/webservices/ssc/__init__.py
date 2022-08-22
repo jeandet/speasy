@@ -7,15 +7,14 @@ __email__ = 'alexis.jeandet@member.fsf.org'
 __version__ = '0.1.0'
 
 from typing import Optional, Dict
-from types import SimpleNamespace
 from datetime import datetime, timedelta
+
 from speasy.core.cache import Cacheable, CacheCall, CACHE_ALLOWED_KWARGS
-from speasy.products.variable import SpeasyVariable
+from xarray import DataArray
 from ...core import http, AllowedKwargs, deprecation
 from speasy.core.proxy import Proxyfiable, GetProduct, PROXY_ALLOWED_KWARGS
 from speasy.core.inventory.indexes import ParameterIndex, SpeasyIndex
 from speasy.core.dataprovider import DataProvider
-from speasy.inventories import data_tree
 import numpy as np
 from astropy import units
 
@@ -32,18 +31,19 @@ def _make_datetime(dt: str) -> np.datetime64:
     return np.datetime64(dt[:-6], 'ns')
 
 
-def _variable(orbit: dict) -> Optional[SpeasyVariable]:
+def _variable(orbit: dict) -> Optional[DataArray]:
     data = orbit['Result']['Data'][1][0]['Coordinates'][1][0]
     keys = list(data.keys())
     keys.remove('CoordinateSystem')
-    values = np.array([data['X'][1], data['Y'][1], data['Z'][1]]).transpose() * units.km
+    values = np.array([data['X'][1], data['Y'][1], data['Z'][1]]).transpose()
     # this is damn slow!
     time_axis = np.array([_make_datetime(v[1]) for v in
                           orbit['Result']['Data'][1][0]['Time'][1]])
-    return SpeasyVariable(time=time_axis,
-                          data=values,
-                          meta={'CoordinateSystem': data['CoordinateSystem']},
-                          columns=['X', 'Y', 'Z'])
+    return DataArray(values,
+                     name=orbit['Result']['Data'][1][0]['Id'],
+                     dims=('time', 'components'),
+                     coords={'time': time_axis, 'components': ['X', 'Y', 'Z']},
+                     attrs={'CoordinateSystem': data['CoordinateSystem'], 'units': 'km'})
 
 
 def _is_valid(orbit: dict):
@@ -89,15 +89,15 @@ class SSC_Webservice(DataProvider):
 
     # Wrapper to ensure that whatever the source (Proxy, Cache, SSCWeb) the returned variable is in km
     def get_trajectory(self, product: str, start_time: datetime, stop_time: datetime, coordinate_system: str = 'gse',
-                       debug=False, **kwargs) -> Optional[SpeasyVariable]:
+                       debug=False, **kwargs) -> Optional[DataArray]:
         var = self._get_orbit(product=product, start_time=start_time, stop_time=stop_time,
                               coordinate_system=coordinate_system, debug=debug, **kwargs)
-        if var:
+        if var is not None:
             if not hasattr(var.values, 'unit'):
                 var.values *= units.km
         return var
 
-    def get_orbit(self, *args, **kwargs) -> SpeasyVariable or None:
+    def get_orbit(self, *args, **kwargs) -> DataArray or None:
         deprecation("Use get_trajectory instead, get_orbit will be removed in speasy 1.0")
         return self.get_trajectory(*args, **kwargs)
 
@@ -107,7 +107,7 @@ class SSC_Webservice(DataProvider):
     @Cacheable(prefix="ssc_orbits", fragment_hours=lambda x: 24, version=version, entry_name=_make_cache_entry_name)
     @Proxyfiable(GetProduct, get_parameter_args)
     def _get_orbit(self, product: str, start_time: datetime, stop_time: datetime, coordinate_system: str = 'gse',
-                   debug=False) -> Optional[SpeasyVariable]:
+                   debug=False) -> Optional[DataArray]:
         if stop_time - start_time < timedelta(days=1):
             stop_time += timedelta(days=1)
         url = f"{self.__url}/locations/{product}/{start_time.strftime('%Y%m%dT%H%M%SZ')},{stop_time.strftime('%Y%m%dT%H%M%SZ')}/{coordinate_system.lower()}/"
@@ -116,5 +116,5 @@ class SSC_Webservice(DataProvider):
         res = http.get(url, headers={"Accept": "application/json"})
         orbit = res.json()
         if res.ok and _is_valid(orbit):
-            return _variable(orbit)[start_time:stop_time]
+            return _variable(orbit).loc[start_time:stop_time]
         return None

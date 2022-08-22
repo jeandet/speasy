@@ -6,6 +6,7 @@ import os
 import datetime
 from urllib.request import urlopen
 from speasy.products.variable import SpeasyVariable
+from xarray import DataArray
 import pandas as pds
 import numpy as np
 
@@ -16,7 +17,7 @@ from speasy.core.datetime_range import DateTimeRange
 from typing import List, Dict
 
 
-def load_csv(filename: str) -> SpeasyVariable:
+def load_csv(filename: str) -> DataArray:
     """Load a CSV file
 
     Parameters
@@ -26,7 +27,7 @@ def load_csv(filename: str) -> SpeasyVariable:
 
     Returns
     -------
-    SpeasyVariable
+    DataArray
         CSV contents
     """
     if '://' not in filename:
@@ -41,6 +42,8 @@ def load_csv(filename: str) -> SpeasyVariable:
                 meta[key.strip()] = value.strip()
             line = csv.readline().decode()
         columns = [col.strip() for col in meta['DATA_COLUMNS'].split(', ')[:]]
+        meta['units'] = meta.get('PARAMETER_UNITS', '')
+        meta['long_name'] = meta.get('PARAMETER_NAME', '')
         with urlopen(filename) as f:
             data = pds.read_csv(f, comment='#', delim_whitespace=True, header=None, names=columns).values.transpose()
         time, data = SpeasyVariable.epoch_to_datetime64(data[0]), data[1:].transpose()
@@ -53,7 +56,21 @@ def load_csv(filename: str) -> SpeasyVariable:
             min_v = np.array([float(v) for v in meta["PARAMETER_TABLE_MIN_VALUES[0]"].split(',')])
             max_v = np.array([float(v) for v in meta["PARAMETER_TABLE_MAX_VALUES[0]"].split(',')])
             y = (max_v + min_v) / 2.
-        return SpeasyVariable(time=time, data=data, meta=meta, columns=columns[1:], y=y)
+        if y:
+            return DataArray(
+                data,
+                dims=('time', 'y'),
+                coords={'time': time, 'y': y},
+                attrs=meta
+            )
+        else:
+            return DataArray(
+                data,
+                dims=('time', 'components'),
+                coords={'time': time, 'components': columns[1:]},
+                attrs=meta
+            )
+        # return SpeasyVariable(time=time, data=data, meta=meta, columns=columns[1:], y=y)
 
 
 def _build_event(data, colnames: List[str]) -> Event:
