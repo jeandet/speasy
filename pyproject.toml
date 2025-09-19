@@ -30,6 +30,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = ['PyYAML',
  'appdirs',
@@ -46,7 +47,7 @@ dependencies = ['PyYAML',
  'requests',
  'scipy',
  'tqdm',
- 'urllib3>=1.26.0',
+ 'urllib3>=2.0.0',
  'certifi'
 ]
 
