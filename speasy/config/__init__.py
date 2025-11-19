@@ -167,12 +167,12 @@ The keys are the URL to match and the values are the replacement URL.
 Example: {"http://example.com": "http://localhost:8000"}""",
                          "type_ctor": _load_dict_from_repr},
                      http_user_agent={"default": "",
-                                        "description": """User agent to use for HTTP requests.
+                                      "description": """User agent to use for HTTP requests.
 This is useful to identify the application making the request.
 If not set, it will use the default user agent of the speasy package."""},
-                     urlib_pool_size={"default": 10,
+                     urlib_pool_size={"default": 16,
                                       "description": """Sets the maximum number of connections to keep in the pool.
-This is useful to avoid creating a new connection for each request.""",
+This is useful to avoid creating a new connection for each request. Keep it as big as max_concurrent_requests to maximize throughput.""",
                                       "type_ctor": int},
                      urlib_num_pools={"default": 10,
                                       "description": """Sets the maximum number of pools to keep in the pool.
@@ -181,6 +181,10 @@ This is useful to avoid creating a new pool for each request.""",
                      user_codecs_extra_dirs={"default": set(),
                                              "description": """A comma separated list of directories to scan for extra codecs.""",
                                              "type_ctor": lambda x: set(x.split(','))},
+                     max_concurrent_requests={"default": 16,
+                                             "description": """Sets the maximum number of concurrent requests speasy can handle.
+Check urlib_pool_size to keep it equal or higher to maximize throughput.""",
+                                             "type_ctor": int}
                      )
 
 proxy = ConfigSection("PROXY",

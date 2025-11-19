@@ -6,8 +6,98 @@
 """
 
 import random
-from typing import Any, Dict, Callable
+from typing import Any, Dict, Callable, List, Tuple
 from functools import wraps
+
+"""
+Global shared thread pool executor
+"""
+
+
+def _thread_pool_executor():
+    from concurrent.futures import ThreadPoolExecutor
+    from speasy.config import core as core_config
+    if not hasattr(_thread_pool_executor, "executor"):
+        _thread_pool_executor.executor = ThreadPoolExecutor(core_config.max_concurrent_requests.get())
+    return _thread_pool_executor.executor
+
+
+def ishuffle(items: List[Any]) -> List[Tuple[int, Any]]:
+    """Shuffles the given list and returns a list of tuples (original_index, item)
+    Parameters
+    ----------
+    items: list
+        list of items to shuffle
+    Returns
+    -------
+    list
+        A list of tuples (original_index, item) in randomized order
+    """
+    indexed_list = list(enumerate(items))
+    random.shuffle(indexed_list)
+    return indexed_list
+
+
+def imap(f: Callable, items: List[Tuple[int, Any]], *args, **kwargs) -> List[Tuple[int, Any]]:
+    """Applies function f to all elements in the given list of tuples (original_index, item)
+    Parameters
+    ----------
+    f: Callable
+        function to apply to each element
+    items: list
+        list of tuples (original_index, item)
+    args: Any
+        additional positional arguments to pass to f
+    kwargs: Any
+        additional keyword arguments to pass to f
+    Returns
+    -------
+    list
+        A list of tuples (original_index, f(item)) in the same order as input
+    """
+    return [(i, f(e, *args, **kwargs)) for i, e in items]
+
+
+def ipmap(f: Callable, items: List[Tuple[int, Any]], *args, **kwargs) -> List[Tuple[int, Any]]:
+    """Applies function f to all elements in the given list of tuples (original_index, item) in parallel
+    Parameters
+    ----------
+    f: Callable
+        function to apply to each element
+    items: list
+        list of tuples (original_index, item)
+    args: Any
+        additional positional arguments to pass to f
+    kwargs: Any
+        additional keyword arguments to pass to f
+    Returns
+    -------
+    list
+        A list of tuples (original_index, f(item)) in the same order as input
+    """
+    from concurrent.futures import as_completed
+    result = []
+    executor = _thread_pool_executor()
+    future_to_index = {executor.submit(f, e, *args, **kwargs): i for i, e in items}
+    for future in as_completed(future_to_index):
+        i = future_to_index[future]
+        result.append((i, future.result()))
+    return result
+
+
+def isort(items: List[Tuple[int, Any]]) -> List[Any]:
+    """Sorts the given list of tuples (original_index, item) by original_index
+    Parameters
+    ----------
+    items: list
+        list of tuples (original_index, item)
+    Returns
+    -------
+    list
+        A list of items sorted by original_index
+    """
+    return [e for i, e in sorted(items, key=lambda x: x[0])]
+
 
 """
 The rationale behind the following function is to randomize the order of execution so we minimize the requests collisions and maximize the throughput.
@@ -40,10 +130,36 @@ def randomized_map(f: Callable, l, *args, **kwargs):
     """
     if not len(l):
         return []
-    indexed_list = list(enumerate(l))
-    random.shuffle(indexed_list)
-    result = sorted([(i, f(e, *args, **kwargs)) for i, e in indexed_list], key=lambda x: x[0])
-    return [e for i, e in result]
+    return isort(imap(f, ishuffle(l), *args, **kwargs))
+
+
+def randomized_pmap(f: Callable, l, *args, **kwargs):
+    """Applies function f to all elements in list l in a randomized order in parallel
+
+    Parameters
+    ----------
+    f: Callable
+        function to apply to each element in l
+    l: list
+        list of elements to process
+    args: Any
+        additional positional arguments to pass to f
+    kwargs: Any
+        additional keyword arguments to pass to f
+
+    Returns
+    -------
+    list
+        A list with the results of applying f to each element in l, in the original order
+
+    Examples
+    --------
+    >>> randomized_pmap(lambda x: x**2, [1,2,3,4])
+    [1, 4, 9, 16]
+    """
+    if not len(l):
+        return []
+    return isort(ipmap(f, ishuffle(l), *args, **kwargs))
 
 
 def pack_kwargs(**kwargs: Any) -> Dict:

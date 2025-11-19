@@ -17,7 +17,7 @@ from speasy.core.codecs import get_codec
 from speasy.core.span_utils import intersects
 from speasy.products import SpeasyVariable
 from speasy.products.variable import merge
-from speasy.core.algorithms import randomized_map
+from speasy.core.algorithms import randomized_pmap
 
 # Change to this when we drop Python 3.8
 # FileLoaderCallable = Callable[[Optional[str], str, ...], Optional[SpeasyVariable]]
@@ -188,7 +188,7 @@ class RandomSplitDirectDownload:
 
         force_refresh = kwargs.pop('force_refresh', False)
         downloader = lambda force_refresh: merge(
-            randomized_map(
+            randomized_pmap(
                 partial(file_reader, variable=variable, **kwargs),
                 RandomSplitDirectDownload.list_files(split_frequency=split_frequency,
                                                      url_pattern=url_pattern,
@@ -222,7 +222,7 @@ class RegularSplitDirectDownload:
                     file_reader: FileLoaderCallable = _read_cdf,
                     **kwargs) -> \
         Optional[SpeasyVariable]:
-        v = merge(randomized_map(
+        v = merge(randomized_pmap(
             lambda date: file_reader(_build_url(url_pattern, date, use_file_list=use_file_list), variable=variable,
                                      **kwargs),
             spilt_range(split_frequency=split_frequency, start_time=start_time, stop_time=stop_time)))
